@@ -1,0 +1,1 @@
+Write-Host $([Environment]::MachineName) -ForegroundColor Green

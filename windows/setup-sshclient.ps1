@@ -9,6 +9,9 @@
 
     Uses only native PowerShell cmdlets for ACL management (no icacls/takeown).
 
+.PARAMETER KeyType
+    Key type to generate (default ed25519).
+
 .PARAMETER HostName
     IP or hostname of the SSH server.
 
@@ -29,7 +32,8 @@ param(
     [Parameter(Mandatory = $true)] [string]$HostName,
     [Parameter(Mandatory = $true)] [string]$Username,
     [int]$Port = 22,
-    [string]$Alias = 'remote'
+    [string]$Alias = 'remote',
+    [string]$KeyType = 'ed25519'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -53,30 +57,30 @@ function Set-FileAcl {
     .PARAMETER Path
         File or directory to modify.
 
-    .PARAMETER InheritFromParent
-        If $true, leave inheritance enabled (only used for the .ssh dir).
-        If $false, disable inheritance and remove all inherited ACEs.
+    .PARAMETER Rights
+        Rights to grant to the current user (e.g. "Read,Write").
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)] [string]$Path,
         [Parameter(Mandatory)] [System.Security.AccessControl.FileSystemRights]$Rights,
-        [Parameter(Mandatory)] [System.Security.AccessControl.AccessControlType]$Type = 'Allow',
-        [switch]$InheritFromParent
+        [switch]$PreserveInheritance
     )
-
     $acl = Get-Acl -LiteralPath $Path
 
-    if (-not $InheritFromParent) {
+    if ($PreserveInheritance) {
+        $acl.SetAccessRuleProtection($false, $true)
+    } else {
         $acl.SetAccessRuleProtection($true, $false)
     }
 
     $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-        $script:Me, $Rights, 'None', 'None', $Type
+        $script:Me,
+        $Rights,
+        [System.Security.AccessControl.AccessControlType]::Allow
     )
     $acl.SetAccessRule($rule)
-
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    [System.IO.FileSystemAclExtensions]::SetAccessControl($Path, $acl)
 }
 
 Write-Step "Checking OpenSSH client..."
@@ -95,16 +99,16 @@ if (-not (Test-Path $sshDir)) {
     Write-Ok "Created $sshDir"
 }
 
-Set-FileAcl -Path $sshDir -Rights 'FullControl' -InheritFromParent
+Set-FileAcl -Path $sshDir -Rights 'FullControl' -PreserveInheritance
 Write-Ok "Locked down $sshDir"
 
 $keyPath = Join-Path $sshDir 'id_ed25519'
 $pubPath = "$keyPath.pub"
 
 if (-not (Test-Path $keyPath)) {
-    Write-Step "Generating ed25519 keypair..."
+    Write-Step "Generating $KeyType keypair..."
     # -N '""' = empty passphrase; ssh-keygen parses this literally on Windows
-    & ssh-keygen -t ed25519 -C "$Username@$HostName" -f $keyPath -N '""' | Out-Null
+    & ssh-keygen -t $KeyType -C "$Username@$([Environment]::MachineName)" -f $keyPath -N '' | Out-Null
     Write-Ok "Key created: $keyPath"
 } else {
     Write-Ok "Existing key at $keyPath — reusing."
@@ -112,7 +116,7 @@ if (-not (Test-Path $keyPath)) {
 
 $pubKey = (Get-Content -LiteralPath $pubPath -Raw).Trim()
 
-Set-FileAcl -Path $keyPath -Rights 'Read'
+Set-FileAcl -Path $keyPath -Rights 'Read' -PreserveInheritance
 Write-Ok "Restricted ACL on private key"
 
 Write-Step "Writing ~/.ssh/config alias '$Alias'..."
@@ -131,12 +135,12 @@ Host $Alias
     HostName $HostName
     User $Username
     Port $Port
-    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.ssh/id_${KeyType}
     IdentitiesOnly yes
     ServerAliveInterval 60
 "@
     Add-Content -LiteralPath $configPath -Value $block -Encoding ascii
-    Set-FileAcl -Path $configPath -Rights 'Read,Write' -InheritFromParent
+    Set-FileAcl -Path $configPath -Rights 'Read,Write' -PreserveInheritance
     Write-Ok "Alias added to $configPath"
 }
 
