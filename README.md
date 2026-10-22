@@ -3,9 +3,18 @@
 Scripts for daily tasks, system setup and networking troubleshooting.
 
 ## Windows
+[`README.md`](windows/README.md) will have instructions if scripts need any.
 | Script | Purpose |
 | --- | --- |
-| [`windows/setup-sshclient.ps1`](windows/setup-sshclient.ps1) | Quick setup of ssh (ed25519) key and `~/.ssh/config` alias for pubkey-only SSH servers |
+| [`setup-sshclient.ps1`](windows/setup-sshclient.ps1) | Quick setup of ssh (ed25519) key and `~/.ssh/config` alias for pubkey-only SSH servers |
+| [`initial-winSetup.ps1`](windows/initial-winSetup.ps1) | Initial setup of a fresh windows install. |
+| ... | ... |
+
+## Python
+[`README.md`](python/README.md) will have instructions if scripts need any.
+| Script | Purpose |
+| --- | --- |
+| [`encode.py`](python/encode.py) | A script to encode video files using FFMpeg as a backend.<br>Created this to help with encoding lots of vid files. |
 | ... | ... |
 
 ## Conventions 
