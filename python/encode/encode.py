@@ -10,7 +10,9 @@ import smtplib
 import traceback
 from typing import Dict, Any, Optional
 import sys
+import dotenv
 
+dotenv.load_dotenv()
 
 def setup_logger(log_file="encode.log", logger=logger):
     log_level = logger.DEBUG
@@ -418,8 +420,7 @@ class VideoEncoder(ArgumentHandler):
                 ffmpeg.input(input_path).output(
                     output_path,
                     **params
-                ).run(overwrite_output=True,
-                      cmd='/home/feedmesleep/.local/ffmpeg-nvenc/bin/ffmpeg')
+                ).run(overwrite_output=True)
                 logging.info(f"Encoding of {source} done.")
                 logging.info(
                     f"Size of output file: {sizeConvertion(os.path.getsize(output_path))} MiB "
@@ -437,15 +438,10 @@ class VideoEncoder(ArgumentHandler):
                     f"Encoding of {source} completed."
                 )
                 mail(source, nomail=self.no_mail)
-            except ffmpeg._run.Error as e:
-                logging.error(
-                    f"Run Error: {source}, {self.destination}\n\
-                    Error: {e}"
-                )
-                logging.error(f'video_metadata = {video_metadata}')
-                logging.error(f'other details = {self.__dict__}')
-                err_trace = traceback.format_exc()
-                mail(source, error=err_trace, nomail=self.no_mail)
+            except ffmpeg.Error as e:
+                ffmpeg_err = e.stderr.decode("utf-8", errors="replace") if e.stderr else "No stderr output"
+                logging.error(f"FFmpeg error on {source}:\n{ffmpeg_err}")
+                mail(source, error=ffmpeg_err[-3000:], nomail=self.no_mail)
                 exit()    
         except Exception as e:
             exc_tb = sys.exc_info()[2]
@@ -472,9 +468,9 @@ class VideoEncoder(ArgumentHandler):
 def mail(sDir, **kwargs) -> None:
     if kwargs.get("nomail"):
         return
-    smail = "mario.salacota@gmail.com"
-    passwd = "hwol bpiq hhlb okgu "
-    rmail = "ibrahim.maaniu@proton.me"
+    smail = os.environ.get('source_mail')
+    passwd = os.environ.get('password') # changed the password I accidentally left here.
+    rmail = os.environ.get('receiver')
 
     subject = f"Encoding Progress of {sDir}"
     message = f"Encoding of {sDir} has been finished."
