@@ -148,7 +148,7 @@ class VideoDetails:
                     duration = d.get('duration') or fmt.get('duration')
                     if duration:
                         filesize = os.path.getsize(os.path.join(kwargs.get('source_dir'), d.get('file_name')))
-                        br = '{}K'.format(int((fiesize * 8) / float(duration)) // 1000)
+                        br = '{}K'.format(int((filesize * 8) / float(duration)) // 1000)
                     else:
                         br = "1500K"
             print(f'{{Width: {w}, Height: {h}, Res: {res}, ratio: {ratio}, frame_rate: {fr}, bit_rate: {br}')
