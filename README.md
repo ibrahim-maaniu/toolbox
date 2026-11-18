@@ -14,7 +14,7 @@ Scripts for daily tasks, system setup and networking troubleshooting.
 [`README.md`](python/README.md) will have instructions if scripts need any.
 | Script | Purpose |
 | --- | --- |
-| [`encode.py`](python/encode.py) | A script to encode video files using FFMpeg as a backend.<br>Created this to help with encoding lots of vid files. |
+| [`encode.py`](python/encode/encode.py) | FFmpeg-based video encoder with batch processing, configurable quality, resolution and HDR support. |
 | ... | ... |
 
 ## Conventions 

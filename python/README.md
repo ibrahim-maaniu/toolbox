@@ -1,29 +1,84 @@
-# Instructions 
+# Instructions
 
-## [encode.py](./encode.py)
+## `encode/encode.py`
 
-Made this script 4-5 years ago to help encode a lot of movies/video files so I can keep my media server low on used storage space.   
-This script helps the user encode a singular video file or a bunch of video files inside a directory.   
-Moves the file(s) to a destination directory while encoding and leaves it there.   
+A video encoding utility built around FFmpeg, originally created to batch-encode video files and reduce storage requirements for a media server.
 
-### Usage Example:
+Supports individual files and directory-based processing, with configurable encoding quality, output resolution, HDR handling and parallel processing.
+
+### Requirements
+
+- Python 3
+- FFmpeg with NVIDIA NVENC support
+- Python dependencies: `ffmpeg-python`, `python-dotenv`
+- Supporting modules: `mailer.py`, `progress.py`
+- NVIDIA GPU with compatible NVENC support
+
+HDR-to-SDR conversion additionally requires FFmpeg's `zscale` and `tonemap` filters.
+
+Email reporting requires SMTP credentials configured in the environment file.
+
+### Configuration
+
+Create an environment file using the provided example and configure the following:
+
+| Variable | Purpose |
+|---|---|
+| `source_mail` | Sender email address |
+| `password` | SMTP password or app password |
+| `receiver` | Recipient email address |
+| `FFMPEG_BIN` | Path to the FFmpeg executable |
+
+### Usage Examples
+
 ```bash
-# Encodes a single file
-python3 encode.py video_file1.mp4 /path/to/dir 
+# Encode a single video file
+python3 encode.py video.mp4 /path/to/destination
 
-# Encodes videos files inside a directory
-python3 encode.py -d sourceDirName destinationDirName
+# Encode all videos in a directory
+python3 encode.py -d /path/to/source /path/to/destination
 
-# Encodes them to a speicific bitrate (lessens the video quality and at the same time file size, default is 1500K)
-python3 encode.py vid1.mp4 destDirName -b 500
+# Set maximum video bitrate (kb/s)
+python3 encode.py video.mp4 /path/to/destination -b 2000
 
-And many more... check the table below.
+# Set constant quality
+python3 encode.py video.mp4 /path/to/destination --cq 28
+
+# Set output resolution (short side)
+python3 encode.py video.mp4 /path/to/destination -r 720
+
+# Enable HDR-to-SDR conversion
+python3 encode.py video.mp4 /path/to/destination --hdr2sdr
+
+# Encode directory contents recursively
+python3 encode.py -d source destination -R
+
+# Encode multiple files simultaneously
+python3 encode.py -d source destination -j 2
+
+# Disable email notifications
+python3 encode.py -d source destination -nm
 ```
-#### Arguments:
+
+### Arguments
+
 | Argument | Purpose |
-| --- | --- |
-| `-d` or `--dir` | Indicate source is a directory |
-| `-b` or `--bitrate` | Sets the bitrate for the output file | 
-| `-y` or `--noconfirm` | Set true for overwrite and doesn't prompt you for input if destination directory has duplicate file |
-| `-nm` or `--no-mail` | Disables the mail functionality |
-| `--skip` | "Interactive to skip some files" is what the argument helper says.<br>Might have added this ages ago to make it so I can skip some times but never bothered adding the feature. |
+|---|---|
+| `-d`, `--dir` | Treat the source as a directory |
+| `-b`, `--bitrate` | Maximum video bitrate in kb/s. Default: 1500 |
+| `--cq` | Constant quality level. Lower values produce better quality and larger files. Default: 30 |
+| `-r`, `--res` | Target output resolution, based on the shorter side. Default: 1080 |
+| `-j`, `--jobs` | Number of files to encode simultaneously. Default: 1 |
+| `-R`, `--recursive` | Recursively process subdirectories and recreate their structure in the destination |
+| `-h2s`, `--hdr2sdr` | Convert HDR video to SDR using GPU encoding |
+| `-y`, `--noconfirm` | Skip overwrite confirmation |
+| `-nm`, `--no-mail` | Disable email notifications |
+
+### Notes
+
+- Output resolution is based on the shorter side of the video, preserving its aspect ratio.
+- Videos are never upscaled.
+- HDR files are encoded using the CPU by default to preserve HDR information. Use `--hdr2sdr` to convert them to SDR.
+- Parallel processing applies to directory mode.
+- When recursive processing is enabled, the source directory structure is recreated inside the destination.
+- Original files are retained when decoding errors are detected, even if deletion after encoding was requested.
